@@ -9,6 +9,7 @@
 #define PONTOS_ASTEROIDE 14
 #define PI 3.14159265358979f
 #define MAX_TIROS 4
+#define MAX_PARTICULAS 80
 
 typedef struct 
 {
@@ -183,6 +184,38 @@ void desenha_tiro(SDL_Renderer* renderer, Tiro* tiros, Nave* nave){
     }
 }
 
+void verifica_colisao(Tiro* tiros, Asteroide* asteroides){
+    float distancia;
+    float dx;
+    float dy;
+
+    for (int i = 0; i < MAX_TIROS; i++)
+    {
+        if (tiros[i].ativo == 1)
+        {
+            for (int j = 0; j < MAX_ASTEROIDES; j++)
+            {
+                if (asteroides[j].ativo == 1)
+                {
+                    dx = tiros[i].x - asteroides[j].x;
+                    dy = tiros[i].y - asteroides[j].y;
+                    
+                    distancia = sqrt(dx*dx + dy*dy);
+
+                    if (distancia < asteroides[j].raio)
+                    {
+                        asteroides[j].ativo = 0;
+                    }
+                    
+                }
+            }
+            
+        }
+        
+    }
+    
+}
+
 int main() {
     
     srand(time(NULL));
@@ -239,12 +272,12 @@ int main() {
         
         if (cooldown_tiro > 0) cooldown_tiro--;
 
-        if (cooldown_tiro > 0) cooldown_tiro--;
-
         if (teclado[SDL_SCANCODE_SPACE] && cooldown_tiro == 0) {
             atira(&nave, tiros);
             cooldown_tiro = 15; // espera 15 frames (~0.25s) antes do próximo
         }
+
+        verifica_colisao(tiros, asteroides);
         
         
         SDL_SetRenderDrawColor(renderer, 10,10,30,255);
