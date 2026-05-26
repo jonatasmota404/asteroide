@@ -65,56 +65,86 @@ void desenha_nave(SDL_Renderer* renderer, Nave* nave){
 
 }
 
+void inicia_asteroides(Asteroide* asteroides){
+    for (int i = 0; i < MAX_ASTEROIDES; i++)
+    {
+        asteroides[i].ativo = 0;
+    }
+    
+}
+
 void spawn_asteroid(Asteroide* asteroides){
+    int inativo = 0;
+    int respawn = 0;
 
     for (int i = 0; i < MAX_ASTEROIDES; i++)
     {
-        int borda = rand() % 4;
-        float rand_0_1 = (float)rand() / RAND_MAX;
-        float rand_1_0_1 = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
-
-        float velocidade = 1.5f;
-        asteroides[i].ativo=1;
-        asteroides[i].raio = 10 + (40*rand_0_1);
-
-        for (int j = 0; j < PONTOS_ASTEROIDE; j++)
+        if (asteroides[i].ativo == 0)
         {
-            float variacao = 0.8f + ((float)rand() / RAND_MAX) * 0.4f;
-            asteroides[i].raios[j] = asteroides[i].raio * variacao;
+            inativo++;
         }
         
+    }
 
-        switch (borda)
-        {
-        case 0:
-            asteroides[i].x = LARGURA * rand_0_1;
-            asteroides[i].y = -20;
-            asteroides[i].vy = velocidade * rand_0_1;
-            asteroides[i].vx = velocidade * rand_1_0_1;
-            break;
-        case 1:
-            asteroides[i].x = LARGURA * rand_0_1;
-            asteroides[i].y = ALTURA + 20;
-            asteroides[i].vx = velocidade * rand_1_0_1;
-            asteroides[i].vy = velocidade * rand_0_1 * -1;
-            break;
-        case 2:
-            asteroides[i].x = -20;
-            asteroides[i].y = ALTURA*rand_0_1;
-            asteroides[i].vy = velocidade * rand_1_0_1;
-            asteroides[i].vx = velocidade * rand_0_1;
-            break;
-        case 3:
-            asteroides[i].x = LARGURA + 20;
-            asteroides[i].y = ALTURA*rand_0_1;
-            asteroides[i].vy = velocidade * rand_1_0_1;
-            asteroides[i].vx = velocidade * rand_0_1*-1;
-            break;
-        
-        default:
-            break;
+    if (inativo >= MAX_ASTEROIDES)
+    {
+        respawn = 1;
+    }
+    
+    
+    if (respawn)
+    {
+        for (int i = 0; i < MAX_ASTEROIDES; i++) {
+            
+            int borda = rand() % 4;
+            float rand_0_1 = (float)rand() / RAND_MAX;
+            float rand_1_0_1 = ((float)rand() / RAND_MAX) * 2.0f - 1.0f;
+    
+            float velocidade = 1.5f;
+            asteroides[i].ativo=1;
+            asteroides[i].raio = 10 + (40*rand_0_1);
+    
+            for (int j = 0; j < PONTOS_ASTEROIDE; j++)
+            {
+                float variacao = 0.8f + ((float)rand() / RAND_MAX) * 0.4f;
+                asteroides[i].raios[j] = asteroides[i].raio * variacao;
+            }
+            
+    
+            switch (borda)
+            {
+            case 0:
+                asteroides[i].x = LARGURA * rand_0_1;
+                asteroides[i].y = -20;
+                asteroides[i].vy = velocidade * rand_0_1;
+                asteroides[i].vx = velocidade * rand_1_0_1;
+                break;
+            case 1:
+                asteroides[i].x = LARGURA * rand_0_1;
+                asteroides[i].y = ALTURA + 20;
+                asteroides[i].vx = velocidade * rand_1_0_1;
+                asteroides[i].vy = velocidade * rand_0_1 * -1;
+                break;
+            case 2:
+                asteroides[i].x = -20;
+                asteroides[i].y = ALTURA*rand_0_1;
+                asteroides[i].vy = velocidade * rand_1_0_1;
+                asteroides[i].vx = velocidade * rand_0_1;
+                break;
+            case 3:
+                asteroides[i].x = LARGURA + 20;
+                asteroides[i].y = ALTURA*rand_0_1;
+                asteroides[i].vy = velocidade * rand_1_0_1;
+                asteroides[i].vx = velocidade * rand_0_1*-1;
+                break;
+            
+            default:
+                break;
+            }
+            
         }
     }
+    
 
 }
 
@@ -299,7 +329,7 @@ int main() {
     int cooldown_tiro = 0;
     float velocidade = 0;
 
-    spawn_asteroid(asteroides);
+    inicia_asteroides(asteroides);
     inicia_tiros(tiros);
     
 
@@ -333,6 +363,8 @@ int main() {
         nave.x = fmod(nave.x + LARGURA, LARGURA);
         nave.y = fmod(nave.y + ALTURA, ALTURA);
         
+        spawn_asteroid(asteroides);
+
         if (cooldown_tiro > 0) cooldown_tiro--;
 
         if (teclado[SDL_SCANCODE_SPACE] && cooldown_tiro == 0) {
