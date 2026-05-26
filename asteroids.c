@@ -35,12 +35,19 @@ typedef struct
     float angulo;
 } Tiro;
 
+typedef struct {
+    float x, y;
+    float vx, vy;
+    int vida;
+    int ativo;
+} Particula;
 
+Particula particulas[MAX_PARTICULAS];
 Asteroide asteroides[MAX_ASTEROIDES];
 Tiro tiros[MAX_TIROS];
 
 void desenha_nave(SDL_Renderer* renderer, Nave* nave){
-    int r_nariz = 20;
+    int r_nariz = 12;
     int r_asa = 12;
 
     float nariz_x = nave->x + r_nariz*cos(nave->angulo);
@@ -184,7 +191,24 @@ void desenha_tiro(SDL_Renderer* renderer, Tiro* tiros, Nave* nave){
     }
 }
 
-void verifica_colisao(Tiro* tiros, Asteroide* asteroides){
+void spawna_explosao(float x, float y, Particula* particulas) {
+    int count = 0;
+    for (int i = 0; i < MAX_PARTICULAS && count < 10; i++) {
+        if (!particulas[i].ativo) {
+            float angulo = ((float)rand() / RAND_MAX) * 2 * PI;
+            float velocidade = 1.0f + ((float)rand() / RAND_MAX) * 3.0f;
+            particulas[i].ativo = 1;
+            particulas[i].vida = 30;
+            particulas[i].x = x;
+            particulas[i].y = y;
+            particulas[i].vx = cos(angulo) * velocidade;
+            particulas[i].vy = sin(angulo) * velocidade;
+            count++;
+        }
+    }
+}
+
+void verifica_colisao(Tiro* tiros, Asteroide* asteroides, Particula* particulas){
     float distancia;
     float dx;
     float dy;
@@ -205,6 +229,7 @@ void verifica_colisao(Tiro* tiros, Asteroide* asteroides){
                     if (distancia < asteroides[j].raio)
                     {
                         asteroides[j].ativo = 0;
+                        spawna_explosao(asteroides[j].x,asteroides[j].y, particulas);
                     }
                     
                 }
@@ -214,6 +239,44 @@ void verifica_colisao(Tiro* tiros, Asteroide* asteroides){
         
     }
     
+}
+
+
+void desenha_particulas(SDL_Renderer* renderer, Particula* particulas){
+    for (int i = 0; i < MAX_PARTICULAS; i++)
+    {
+        if (particulas[i].ativo) {
+            SDL_RenderDrawPoint(renderer, particulas[i].x, particulas[i].y);
+            particulas[i].x += particulas[i].vx;
+            particulas[i].y += particulas[i].vy;
+            particulas[i].vida--;
+            if (particulas[i].vida <= 0) particulas[i].ativo = 0;
+        }
+    }
+}
+
+int verifica_colisao_nave(Nave* nave, Asteroide* asteroides){
+    float distancia;
+    float dx;
+    float dy;
+
+    for (int i = 0; i < MAX_ASTEROIDES; i++)
+    {
+        if (asteroides[i].ativo)
+        {
+            dx = nave->x - asteroides[i].x;
+            dy = nave->y - asteroides[i].y;
+            
+            distancia = sqrt(dx*dx + dy*dy);  
+
+            if (distancia < asteroides[i].raio + 11)
+            {
+                return 1;
+            }
+        }
+    }
+
+    return 0;
 }
 
 int main() {
@@ -277,8 +340,12 @@ int main() {
             cooldown_tiro = 15; // espera 15 frames (~0.25s) antes do próximo
         }
 
-        verifica_colisao(tiros, asteroides);
+        verifica_colisao(tiros, asteroides, particulas);
         
+        if (verifica_colisao_nave(&nave, asteroides))
+        {
+            rodando = 0;
+        }
         
         SDL_SetRenderDrawColor(renderer, 10,10,30,255);
         SDL_RenderClear(renderer);
@@ -286,6 +353,7 @@ int main() {
         desenha_nave(renderer, &nave);
         desenha_asteroides(renderer, asteroides);
         desenha_tiro(renderer, tiros, &nave);
+        desenha_particulas(renderer, particulas);
         SDL_RenderPresent(renderer);
 
         SDL_Delay(16); // 1000ms / 60fps ≈ 16ms por frame
