@@ -59,6 +59,9 @@ Tiro tiros[MAX_TIROS];
 void desenha_nave(SDL_Renderer* renderer, Nave* nave){
     int r_nariz = 12;
     int r_asa = 12;
+    float angulo_calda_x = nave->x + cos(nave->angulo);
+    float angulo_calda_y = nave->y + sin(nave->angulo);
+
 
     float nariz_x = nave->x + r_nariz*cos(nave->angulo);
     float nariz_y = nave->y + r_nariz*sin(nave->angulo);
@@ -71,8 +74,8 @@ void desenha_nave(SDL_Renderer* renderer, Nave* nave){
 
     SDL_RenderDrawLine(renderer, nariz_x, nariz_y, asa_esq_x, asa_esq_y);
     SDL_RenderDrawLine(renderer, nariz_x, nariz_y, asa_dir_x, asa_dir_y);
-    SDL_RenderDrawLine(renderer, asa_esq_x, asa_esq_y, asa_dir_x, asa_dir_y);
-
+    SDL_RenderDrawLine(renderer, asa_esq_x, asa_esq_y, angulo_calda_x,angulo_calda_y);
+    SDL_RenderDrawLine(renderer, angulo_calda_x, angulo_calda_y, asa_dir_x, asa_dir_y);
 }
 
 void inicia_asteroides(Asteroide* asteroides){
@@ -409,6 +412,44 @@ void reinicia_jogo(Nave* nave, int* pontos, int* timer_spawn, int* intervalo_spa
     inicia_tiros(tiros);
 }
 
+void verifica_colisao_asteroides(Asteroide* asteroides) {
+    for (int i = 0; i < MAX_ASTEROIDES; i++) {
+        for (int j = i + 1; j < MAX_ASTEROIDES; j++) {
+            if (asteroides[i].ativo && asteroides[j].ativo) 
+            {
+                float dx = asteroides[j].x - asteroides[i].x;
+                float dy = asteroides[j].y - asteroides[i].y;
+                float distancia = sqrt(dx*dx + dy*dy);
+
+                if (distancia < asteroides[i].raio + asteroides[j].raio)
+                {
+                    float nx = dx/distancia;
+                    float ny = dy/distancia;
+                    float dvx = asteroides[i].vx - asteroides[j].vx;
+                    float dvy = asteroides[i].vy - asteroides[j].vy;
+                    float impulso = dvx*nx + dvy*ny;
+
+                    float sobreposicao = (asteroides[i].raio + asteroides[j].raio) - distancia;
+                    asteroides[i].x -= nx * sobreposicao * 0.5f;
+                    asteroides[i].y -= ny * sobreposicao * 0.5f;
+                    asteroides[j].x += nx * sobreposicao * 0.5f;
+                    asteroides[j].y += ny * sobreposicao * 0.5f;
+
+                    if (impulso > 0)
+                    {
+                        asteroides[i].vx -= impulso * nx;
+                        asteroides[i].vy -= impulso * ny;
+                        asteroides[j].vx += impulso * nx;
+                        asteroides[j].vy += impulso * ny;
+                    }
+                    
+                    
+                }
+            }
+        }
+    }
+}
+
 int main() {
     
     TTF_Init();
@@ -539,6 +580,7 @@ int main() {
             }
 
             verifica_colisao__tiro_asteroide(tiros, asteroides, particulas, &pontos);
+            verifica_colisao_asteroides(asteroides);
             
             if (verifica_colisao_nave(&nave, asteroides))
             {
