@@ -1,5 +1,6 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL_ttf.h>
+#include <SDL2/SDL_mixer.h>
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
@@ -281,7 +282,7 @@ void spawna_explosao(float x, float y, Particula* particulas) {
     }
 }
 
-void verifica_colisao__tiro_asteroide(Tiro* tiros, Asteroide* asteroides, Particula* particulas, int* pontos){
+void verifica_colisao_tiro_asteroide(Tiro* tiros, Asteroide* asteroides, Particula* particulas, int* pontos, Mix_Chunk* som_explosao){
     float distancia;
     float dx;
     float dy;
@@ -308,6 +309,7 @@ void verifica_colisao__tiro_asteroide(Tiro* tiros, Asteroide* asteroides, Partic
                         {
                             asteroides[j].ativo = 0;
                             spawna_explosao(asteroides[j].x,asteroides[j].y, particulas);
+                            Mix_PlayChannel(-1, som_explosao, 0);
                             if (asteroides[j].tamanho == 3)
                             {
                                 int modo = rand() % 3;
@@ -501,6 +503,15 @@ int main() {
     SDL_Renderer* renderer = NULL;
     SDL_Init(SDL_INIT_VIDEO);
 
+    Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
+
+    Mix_Music* musica = Mix_LoadMUS("411038__frankum__x-future-synthwave-track-loop.mp3");
+    Mix_Chunk* som_tiro = Mix_LoadWAV("laser1.wav");
+    Mix_Chunk* som_explosao = Mix_LoadWAV("explosion.wav");
+
+    Mix_PlayMusic(musica, -1); // loop infinito
+    Mix_VolumeMusic(64); // volume 50% (0-128)
+
     janela = SDL_CreateWindow("ASTEROID", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, LARGURA, ALTURA,0);
     renderer = SDL_CreateRenderer(janela, -1, SDL_RENDERER_ACCELERATED);
 
@@ -618,10 +629,11 @@ int main() {
 
             if (teclado[SDL_SCANCODE_SPACE] && cooldown_tiro == 0) {
                 atira(&nave, tiros);
+                Mix_PlayChannel(-1, som_tiro, 0);
                 cooldown_tiro = 15; // espera 15 frames (~0.25s) antes do próximo
             }
 
-            verifica_colisao__tiro_asteroide(tiros, asteroides, particulas, &pontos);
+            verifica_colisao_tiro_asteroide(tiros, asteroides, particulas, &pontos, som_explosao);
             verifica_colisao_asteroides(asteroides);
             
             if (verifica_colisao_nave(&nave, asteroides))
@@ -694,6 +706,9 @@ int main() {
         timer_spawn++;
      }
      
-
+    Mix_FreeChunk(som_tiro);
+    Mix_FreeChunk(som_explosao);
+    Mix_FreeMusic(musica);
+    Mix_CloseAudio();
     return 0;
 }
