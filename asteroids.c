@@ -1,4 +1,5 @@
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_ttf.h>
 #include <math.h>
 #include <stdlib.h>
 #include <time.h>
@@ -10,6 +11,11 @@
 #define PI 3.14159265358979f
 #define MAX_TIROS 4
 #define MAX_PARTICULAS 80
+#define ESTADO_MENU 0
+#define ESTADO_JOGANDO 1
+#define ESTADO_GAME_OVER 2
+#define FONTE "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
+
 
 typedef struct 
 {
@@ -24,6 +30,8 @@ typedef struct {
     float raio;
     float raios[PONTOS_ASTEROIDE];
     int ativo;
+    int vida;
+    int tamanho;
 } Asteroide;
 
 typedef struct
@@ -83,7 +91,13 @@ void spawn_asteroid(Asteroide* asteroides){
 
             float velocidade = 1.5f;
             asteroides[i].ativo=1;
-            asteroides[i].raio = 10 + (40*rand_0_1);
+            asteroides[i].tamanho = 1 + rand() % 3; 
+            asteroides[i].vida = asteroides[i].tamanho;
+
+            if (asteroides[i].tamanho == 3) asteroides[i].raio = 35 + ((float)rand()/RAND_MAX) * 15;
+            if (asteroides[i].tamanho == 2) asteroides[i].raio = 20 + ((float)rand()/RAND_MAX) * 14;
+            if (asteroides[i].tamanho == 1) asteroides[i].raio = 8  + ((float)rand()/RAND_MAX) * 11;
+            
 
             for (int j = 0; j < PONTOS_ASTEROIDE; j++)
             {
@@ -129,6 +143,32 @@ void spawn_asteroid(Asteroide* asteroides){
 
 }
 
+void spawna_fragmento(float x, float y, int tamanho, Asteroide* asteroides) {
+    for (int i = 0; i < MAX_ASTEROIDES; i++) {
+        if (!asteroides[i].ativo) {
+            float angulo = ((float)rand() / RAND_MAX) * 2 * PI;
+            float velocidade = 1.5f + ((float)rand() / RAND_MAX) * 1.5f;
+
+            asteroides[i].ativo = 1;
+            asteroides[i].tamanho = tamanho;
+            asteroides[i].vida = tamanho;
+            asteroides[i].x = x;
+            asteroides[i].y = y;
+            asteroides[i].vx = cos(angulo) * velocidade;
+            asteroides[i].vy = sin(angulo) * velocidade;
+
+            if (tamanho == 2) asteroides[i].raio = 20 + ((float)rand()/RAND_MAX) * 14;
+            if (tamanho == 1) asteroides[i].raio = 8  + ((float)rand()/RAND_MAX) * 11;
+
+            for (int j = 0; j < PONTOS_ASTEROIDE; j++) {
+                float variacao = 0.8f + ((float)rand() / RAND_MAX) * 0.4f;
+                asteroides[i].raios[j] = asteroides[i].raio * variacao;
+            }
+            break;
+        }
+    }
+}
+
 void desenha_asteroides(SDL_Renderer* renderer, Asteroide* asteroides) {
 
     float angulo = (2* PI /PONTOS_ASTEROIDE);
@@ -159,6 +199,14 @@ void desenha_asteroides(SDL_Renderer* renderer, Asteroide* asteroides) {
 
                 float ponto_x_proximo = asteroides[i].x + asteroides[i].raios[proximo] * cos(angulo_proximo);
                 float ponto_y_proximo = asteroides[i].y + asteroides[i].raios[proximo] * sin(angulo_proximo);
+
+                if (asteroides[i].vida == asteroides[i].tamanho) {
+                    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255); // intacto = branco
+                } else if (asteroides[i].vida == 2) {
+                    SDL_SetRenderDrawColor(renderer, 255, 200, 100, 255); // amarelado
+                } else {
+                    SDL_SetRenderDrawColor(renderer, 255, 80, 80, 255);   // vermelho = quase morto
+                }
 
                 SDL_RenderDrawLine(renderer, ponto_x, ponto_y, ponto_x_proximo, ponto_y_proximo);
             }
@@ -219,28 +267,54 @@ void spawna_explosao(float x, float y, Particula* particulas) {
     }
 }
 
-void verifica_colisao(Tiro* tiros, Asteroide* asteroides, Particula* particulas){
+void verifica_colisao__tiro_asteroide(Tiro* tiros, Asteroide* asteroides, Particula* particulas, int* pontos){
     float distancia;
     float dx;
     float dy;
 
     for (int i = 0; i < MAX_TIROS; i++)
     {
-        if (tiros[i].ativo == 1)
+        if (tiros[i].ativo)
         {
             for (int j = 0; j < MAX_ASTEROIDES; j++)
             {
-                if (asteroides[j].ativo == 1)
+                if (asteroides[j].ativo)
                 {
                     dx = tiros[i].x - asteroides[j].x;
                     dy = tiros[i].y - asteroides[j].y;
                     
                     distancia = sqrt(dx*dx + dy*dy);
 
+                    
                     if (distancia < asteroides[j].raio)
                     {
-                        asteroides[j].ativo = 0;
-                        spawna_explosao(asteroides[j].x,asteroides[j].y, particulas);
+                        asteroides[j].vida--;
+                        tiros[i].ativo = 0;
+                        if (asteroides[j].vida <= 0) 
+                        {
+                            asteroides[j].ativo = 0;
+                            spawna_explosao(asteroides[j].x,asteroides[j].y, particulas);
+                            if (asteroides[j].tamanho == 3)
+                            {
+                                int modo = rand() % 3;
+                                if (modo == 0) { // dois tamanho 2
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 2, asteroides);
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 2, asteroides);
+                                } else if (modo == 1) { // um 2 e um 1
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 2, asteroides);
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 1, asteroides);
+                                } else { // três tamanho 1
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 1, asteroides);
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 1, asteroides);
+                                    spawna_fragmento(asteroides[j].x, asteroides[j].y, 1, asteroides);
+                                }
+                            } else if (asteroides[j].tamanho == 2) 
+                            {
+                                spawna_fragmento(asteroides[j].x, asteroides[j].y, 1, asteroides);
+                                spawna_fragmento(asteroides[j].x, asteroides[j].y, 1, asteroides);
+                            }
+                            (*pontos)++;
+                        }
                     }
                     
                 }
@@ -251,7 +325,6 @@ void verifica_colisao(Tiro* tiros, Asteroide* asteroides, Particula* particulas)
     }
     
 }
-
 
 void desenha_particulas(SDL_Renderer* renderer, Particula* particulas){
     for (int i = 0; i < MAX_PARTICULAS; i++)
@@ -290,8 +363,25 @@ int verifica_colisao_nave(Nave* nave, Asteroide* asteroides){
     return 0;
 }
 
+void desenha_pontos(SDL_Renderer* renderer, TTF_Font* fonte, int pontos) {
+    char texto[32];
+    sprintf(texto, "Pontos: %d", pontos);
+
+    SDL_Color branco = {255, 255, 255, 255};
+    SDL_Surface* surface = TTF_RenderText_Solid(fonte, texto, branco);
+
+    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
+    SDL_FreeSurface(surface); // surface virou texture, pode liberar
+
+    SDL_Rect dest = {10, 10, 150, 30}; // x, y, largura, altura
+    SDL_RenderCopy(renderer, texture, NULL, &dest);
+    SDL_DestroyTexture(texture); // libera após usar
+}
+
 int main() {
     
+    TTF_Init();
+    TTF_Font* fonte = TTF_OpenFont(FONTE, 24);
     srand(time(NULL));
     SDL_Window* janela = NULL;
     SDL_Renderer* renderer = NULL;
@@ -302,6 +392,10 @@ int main() {
 
     int rodando = 1;
     int timer_spawn = 0;
+    int intervalo_spawn = 30 + rand() % 180;
+    int cooldown_tiro = 0;
+    float velocidade = 0;
+    int pontos = 0;
 
     Nave nave;
     nave.x = LARGURA / 2;
@@ -309,8 +403,7 @@ int main() {
     nave.vx = 0;
     nave.vy = 0;
     nave.angulo = 0;
-    int cooldown_tiro = 0;
-    float velocidade = 0;
+    
 
     inicia_asteroides(asteroides);
     inicia_tiros(tiros);
@@ -347,9 +440,10 @@ int main() {
         nave.y = fmod(nave.y + ALTURA, ALTURA);
         
         
-        if (timer_spawn >= 120) {
+        if (timer_spawn >= intervalo_spawn) {
             spawn_asteroid(asteroides);
             timer_spawn = 0;
+            intervalo_spawn = 30 + rand() % 180;
         }
 
         if (cooldown_tiro > 0) cooldown_tiro--;
@@ -359,7 +453,7 @@ int main() {
             cooldown_tiro = 15; // espera 15 frames (~0.25s) antes do próximo
         }
 
-        verifica_colisao(tiros, asteroides, particulas);
+        verifica_colisao__tiro_asteroide(tiros, asteroides, particulas, &pontos);
         
         if (verifica_colisao_nave(&nave, asteroides))
         {
@@ -371,6 +465,7 @@ int main() {
         SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
         desenha_nave(renderer, &nave);
         desenha_asteroides(renderer, asteroides);
+        desenha_pontos(renderer, fonte, pontos);
         desenha_tiro(renderer, tiros, &nave);
         desenha_particulas(renderer, particulas);
         SDL_RenderPresent(renderer);
