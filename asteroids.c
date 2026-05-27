@@ -378,6 +378,18 @@ void desenha_pontos(SDL_Renderer* renderer, TTF_Font* fonte, int pontos) {
     SDL_DestroyTexture(texture); // libera após usar
 }
 
+void reinicia_jogo(Nave* nave, int* pontos, int* timer_spawn, int* intervalo_spawn, int* cooldown_tiro) {
+    nave->x = LARGURA / 2;
+    nave->y = ALTURA / 2;
+    nave->vx = nave->vy = nave->angulo = 0;
+    *pontos = 0;
+    *timer_spawn = 0;
+    *intervalo_spawn = 30 + rand() % 180;
+    *cooldown_tiro = 0;
+    inicia_asteroides(asteroides);
+    inicia_tiros(tiros);
+}
+
 int main() {
     
     TTF_Init();
@@ -396,6 +408,8 @@ int main() {
     int cooldown_tiro = 0;
     float velocidade = 0;
     int pontos = 0;
+    int estado = ESTADO_MENU;
+    int opcao_selecionada = 0;
 
     Nave nave;
     nave.x = LARGURA / 2;
@@ -411,67 +425,160 @@ int main() {
 
      while (rodando)
      {
+
         SDL_Event evento;
 
         while (SDL_PollEvent(&evento)) {
             if (evento.type == SDL_QUIT) rodando = 0;
+            
+            if (evento.type == SDL_KEYDOWN) {
+                if (estado == ESTADO_MENU || estado == ESTADO_GAME_OVER) {
+                    if (evento.key.keysym.sym == SDLK_UP)    opcao_selecionada = 0;
+                    if (evento.key.keysym.sym == SDLK_DOWN)  opcao_selecionada = 1;
+                    if (evento.key.keysym.sym == SDLK_RETURN) {
+                        if (opcao_selecionada == 0) {
+                            reinicia_jogo(&nave, &pontos, &timer_spawn, &intervalo_spawn, &cooldown_tiro);
+                            estado = ESTADO_JOGANDO;
+                        }
+                        if (opcao_selecionada == 1) rodando = 0;
+                    }
+                }
+            }
         }
         const Uint8* teclado = SDL_GetKeyboardState(NULL);
 
-        if (teclado[SDL_SCANCODE_LEFT])  nave.angulo -= 0.03;
-        if (teclado[SDL_SCANCODE_RIGHT]) nave.angulo += 0.03;
-
-        if (teclado[SDL_SCANCODE_UP]) {
-            nave.vx += cos(nave.angulo) * 0.05;
-            nave.vy += sin(nave.angulo) * 0.05;
-        }
-
-        velocidade = sqrt(nave.vx * nave.vx + nave.vy * nave.vy);
-        if (velocidade > 5.0f) {
-            nave.vx = (nave.vx / velocidade) * 5.0f;
-            nave.vy = (nave.vy / velocidade) * 5.0f;
-        }
-
-        nave.vx *= 0.99f;
-        nave.vy *= 0.99f;
-        nave.x += nave.vx;
-        nave.y += nave.vy;
-        nave.x = fmod(nave.x + LARGURA, LARGURA);
-        nave.y = fmod(nave.y + ALTURA, ALTURA);
-        
-        
-        if (timer_spawn >= intervalo_spawn) {
-            spawn_asteroid(asteroides);
-            timer_spawn = 0;
-            intervalo_spawn = 30 + rand() % 180;
-        }
-
-        if (cooldown_tiro > 0) cooldown_tiro--;
-
-        if (teclado[SDL_SCANCODE_SPACE] && cooldown_tiro == 0) {
-            atira(&nave, tiros);
-            cooldown_tiro = 15; // espera 15 frames (~0.25s) antes do próximo
-        }
-
-        verifica_colisao__tiro_asteroide(tiros, asteroides, particulas, &pontos);
-        
-        if (verifica_colisao_nave(&nave, asteroides))
+        if (estado == ESTADO_MENU)
         {
-            rodando = 0;
+            // desenho
+            SDL_Color branco  = {255, 255, 255, 255};
+            SDL_Color amarelo = {255, 220, 50,  255};
+
+            // título
+            SDL_Surface* s = TTF_RenderText_Solid(fonte, "ASTEROIDS", branco);
+            SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            SDL_Rect r = {280, 180, 240, 50};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            // opção jogar
+            SDL_Color cor_jogar = (opcao_selecionada == 0) ? amarelo : branco;
+            s = TTF_RenderText_Solid(fonte, "> JOGAR", cor_jogar);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){320, 300, 160, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            // opção sair
+            SDL_Color cor_sair = (opcao_selecionada == 1) ? amarelo : branco;
+            s = TTF_RenderText_Solid(fonte, "> SAIR", cor_sair);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){320, 350, 130, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
         }
         
-        SDL_SetRenderDrawColor(renderer, 10,10,30,255);
-        SDL_RenderClear(renderer);
-        SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-        desenha_nave(renderer, &nave);
-        desenha_asteroides(renderer, asteroides);
-        desenha_pontos(renderer, fonte, pontos);
-        desenha_tiro(renderer, tiros, &nave);
-        desenha_particulas(renderer, particulas);
+        if (estado == ESTADO_JOGANDO)
+        {
+            if (teclado[SDL_SCANCODE_LEFT])  nave.angulo -= 0.03;
+            if (teclado[SDL_SCANCODE_RIGHT]) nave.angulo += 0.03;
+
+            if (teclado[SDL_SCANCODE_UP]) {
+                nave.vx += cos(nave.angulo) * 0.05;
+                nave.vy += sin(nave.angulo) * 0.05;
+            }
+
+            velocidade = sqrt(nave.vx * nave.vx + nave.vy * nave.vy);
+            if (velocidade > 5.0f) {
+                nave.vx = (nave.vx / velocidade) * 5.0f;
+                nave.vy = (nave.vy / velocidade) * 5.0f;
+            }
+
+            nave.vx *= 0.99f;
+            nave.vy *= 0.99f;
+            nave.x += nave.vx;
+            nave.y += nave.vy;
+            nave.x = fmod(nave.x + LARGURA, LARGURA);
+            nave.y = fmod(nave.y + ALTURA, ALTURA);
+            
+            
+            if (timer_spawn >= intervalo_spawn) {
+                spawn_asteroid(asteroides);
+                timer_spawn = 0;
+                intervalo_spawn = 30 + rand() % 180;
+            }
+
+            if (cooldown_tiro > 0) cooldown_tiro--;
+
+            if (teclado[SDL_SCANCODE_SPACE] && cooldown_tiro == 0) {
+                atira(&nave, tiros);
+                cooldown_tiro = 15; // espera 15 frames (~0.25s) antes do próximo
+            }
+
+            verifica_colisao__tiro_asteroide(tiros, asteroides, particulas, &pontos);
+            
+            if (verifica_colisao_nave(&nave, asteroides))
+            {
+                estado = ESTADO_GAME_OVER;
+            }
+            
+            SDL_SetRenderDrawColor(renderer, 10,10,30,255);
+            SDL_RenderClear(renderer);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            desenha_nave(renderer, &nave);
+            desenha_asteroides(renderer, asteroides);
+            desenha_pontos(renderer, fonte, pontos);
+            desenha_tiro(renderer, tiros, &nave);
+            desenha_particulas(renderer, particulas);
+        }
+        
+        if (estado == ESTADO_GAME_OVER)
+        {
+            // desenho
+            SDL_Color branco  = {255, 255, 255, 255};
+            SDL_Color amarelo = {255, 220, 50,  255};
+            SDL_Color vermelho = {255, 80, 80, 255};
+
+            // game over
+            SDL_Surface* s = TTF_RenderText_Solid(fonte, "GAME OVER", vermelho);
+            SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            SDL_Rect r = {280, 180, 240, 50};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            // pontuação
+            char texto[32];
+            sprintf(texto, "Pontos: %d", pontos);
+            s = TTF_RenderText_Solid(fonte, texto, branco);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){320, 250, 160, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            // opções
+            SDL_Color cor_reiniciar = (opcao_selecionada == 0) ? amarelo : branco;
+            s = TTF_RenderText_Solid(fonte, "> REINICIAR", cor_reiniciar);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){300, 330, 200, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            SDL_Color cor_sair = (opcao_selecionada == 1) ? amarelo : branco;
+            s = TTF_RenderText_Solid(fonte, "> SAIR", cor_sair);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){320, 380, 130, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+        }
+        
         SDL_RenderPresent(renderer);
-
         SDL_Delay(16); // 1000ms / 60fps ≈ 16ms por frame
-
         timer_spawn++;
      }
      
