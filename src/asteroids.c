@@ -15,8 +15,9 @@
 #define ESTADO_MENU 0
 #define ESTADO_JOGANDO 1
 #define ESTADO_GAME_OVER 2
+#define ESTADO_PAUSADO 3
 #define MAX_ESTRELAS 150
-#define FONTE "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
+#define FONTE "assets/fonts/Lato-Heavy.ttf"
 
 
 typedef struct 
@@ -505,9 +506,9 @@ int main() {
 
     Mix_OpenAudio(44100, MIX_DEFAULT_FORMAT, 2, 2048);
 
-    Mix_Music* musica = Mix_LoadMUS("411038__frankum__x-future-synthwave-track-loop.mp3");
-    Mix_Chunk* som_tiro = Mix_LoadWAV("laser1.wav");
-    Mix_Chunk* som_explosao = Mix_LoadWAV("explosion.wav");
+    Mix_Music* musica = Mix_LoadMUS("assets/audio/411038__frankum__x-future-synthwave-track-loop.mp3");
+    Mix_Chunk* som_tiro = Mix_LoadWAV("assets/audio/laser1.wav");
+    Mix_Chunk* som_explosao = Mix_LoadWAV("assets/audio/explosion.wav");
 
     Mix_PlayMusic(musica, -1); // loop infinito
     Mix_VolumeMusic(64); // volume 50% (0-128)
@@ -547,9 +548,24 @@ int main() {
             if (evento.type == SDL_QUIT) rodando = 0;
             
             if (evento.type == SDL_KEYDOWN) {
+                // pausa e despausa com ESC
+                if (estado == ESTADO_JOGANDO && evento.key.keysym.sym == SDLK_ESCAPE)
+                    estado = ESTADO_PAUSADO;
+
+                // menu de pausa
+                if (estado == ESTADO_PAUSADO) {
+                    if (evento.key.keysym.sym == SDLK_UP)   opcao_selecionada = 0;
+                    if (evento.key.keysym.sym == SDLK_DOWN) opcao_selecionada = 1;
+                    if (evento.key.keysym.sym == SDLK_RETURN) {
+                        if (opcao_selecionada == 0) estado = ESTADO_JOGANDO;
+                        if (opcao_selecionada == 1) rodando = 0;
+                    }
+                }
+
+                // menu principal e game over
                 if (estado == ESTADO_MENU || estado == ESTADO_GAME_OVER) {
-                    if (evento.key.keysym.sym == SDLK_UP)    opcao_selecionada = 0;
-                    if (evento.key.keysym.sym == SDLK_DOWN)  opcao_selecionada = 1;
+                    if (evento.key.keysym.sym == SDLK_UP)   opcao_selecionada = 0;
+                    if (evento.key.keysym.sym == SDLK_DOWN) opcao_selecionada = 1;
                     if (evento.key.keysym.sym == SDLK_RETURN) {
                         if (opcao_selecionada == 0) {
                             reinicia_jogo(&nave, &pontos, &timer_spawn, &intervalo_spawn, &cooldown_tiro);
@@ -658,6 +674,44 @@ int main() {
             if (nave.invencivel > 0) nave.invencivel--;
         }
         
+        if (estado == ESTADO_PAUSADO) {
+            SDL_SetRenderDrawColor(renderer, 10, 10, 30, 255);
+            SDL_RenderClear(renderer);
+            desenha_estrelas(renderer, estrelas);
+            SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+            desenha_nave(renderer, &nave);
+            desenha_asteroides(renderer, asteroides);
+            desenha_tiro(renderer, tiros, &nave);
+            desenha_particulas(renderer, particulas);
+            desenha_pontos_vidas(renderer, fonte, pontos, nave.vidas);
+
+            SDL_Color amarelo = {255, 220, 50, 255};
+            SDL_Color branco  = {255, 255, 255, 255};
+
+            SDL_Surface* s = TTF_RenderText_Solid(fonte, "PAUSADO", amarelo);
+            SDL_Texture* t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            SDL_Rect r = {330, 220, 140, 45};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            SDL_Color cor_retomar = (opcao_selecionada == 0) ? amarelo : branco;
+            s = TTF_RenderText_Solid(fonte, "> RETOMAR", cor_retomar);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){310, 300, 180, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+
+            SDL_Color cor_sair = (opcao_selecionada == 1) ? amarelo : branco;
+            s = TTF_RenderText_Solid(fonte, "> SAIR", cor_sair);
+            t = SDL_CreateTextureFromSurface(renderer, s);
+            SDL_FreeSurface(s);
+            r = (SDL_Rect){320, 350, 130, 35};
+            SDL_RenderCopy(renderer, t, NULL, &r);
+            SDL_DestroyTexture(t);
+        }
+
         if (estado == ESTADO_GAME_OVER)
         {
             // desenho
