@@ -22,6 +22,8 @@ typedef struct
     float x,y;
     float vx,vy;
     float angulo;
+    int vidas;
+    int invencivel;
 } Nave;
 
 typedef struct {
@@ -210,9 +212,9 @@ void desenha_asteroides(SDL_Renderer* renderer, Asteroide* asteroides) {
 
                 SDL_RenderDrawLine(renderer, ponto_x, ponto_y, ponto_x_proximo, ponto_y_proximo);
             }
-            
         }
     }
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
 }
 
 void inicia_tiros(Tiro* tiros){
@@ -340,6 +342,7 @@ void desenha_particulas(SDL_Renderer* renderer, Particula* particulas){
 }
 
 int verifica_colisao_nave(Nave* nave, Asteroide* asteroides){
+    if (nave->invencivel > 0) return 0;
     float distancia;
     float dx;
     float dy;
@@ -355,6 +358,8 @@ int verifica_colisao_nave(Nave* nave, Asteroide* asteroides){
 
             if (distancia < asteroides[i].raio + 11)
             {
+                nave->vidas--;
+                nave->invencivel = 120;
                 return 1;
             }
         }
@@ -363,25 +368,39 @@ int verifica_colisao_nave(Nave* nave, Asteroide* asteroides){
     return 0;
 }
 
-void desenha_pontos(SDL_Renderer* renderer, TTF_Font* fonte, int pontos) {
-    char texto[32];
-    sprintf(texto, "Pontos: %d", pontos);
+void desenha_pontos_vidas(SDL_Renderer* renderer, TTF_Font* fonte ,int pontos, int vidas) {
+    char texto_pontos[32];
+    char texto_vidas[32];
+    sprintf(texto_pontos, "Pontos: %d", pontos);
+    sprintf(texto_vidas, "Vidas: %d", vidas);
+
 
     SDL_Color branco = {255, 255, 255, 255};
-    SDL_Surface* surface = TTF_RenderText_Solid(fonte, texto, branco);
+    SDL_Surface* surface_pontos = TTF_RenderText_Solid(fonte, texto_pontos, branco);
+    SDL_Surface* surface_vidas = TTF_RenderText_Solid(fonte, texto_vidas, branco);
 
-    SDL_Texture* texture = SDL_CreateTextureFromSurface(renderer, surface);
-    SDL_FreeSurface(surface); // surface virou texture, pode liberar
+    SDL_Texture* texture_pontos = SDL_CreateTextureFromSurface(renderer, surface_pontos);
+    SDL_Texture* texture_vidas = SDL_CreateTextureFromSurface(renderer, surface_vidas);
 
-    SDL_Rect dest = {10, 10, 150, 30}; // x, y, largura, altura
-    SDL_RenderCopy(renderer, texture, NULL, &dest);
-    SDL_DestroyTexture(texture); // libera após usar
+    SDL_FreeSurface(surface_pontos); // surface virou texture, pode liberar
+    SDL_FreeSurface(surface_vidas);
+
+    SDL_Rect dest_pontos = {15, 10, 100, 30}; // x, y, largura, altura
+    SDL_Rect dest_vidas = {15, 50, 100, 20};
+
+    SDL_RenderCopy(renderer, texture_pontos, NULL, &dest_pontos);
+    SDL_RenderCopy(renderer, texture_vidas, NULL, &dest_vidas);
+
+    SDL_DestroyTexture(texture_pontos); // libera após usar
+    SDL_DestroyTexture(texture_vidas);
 }
 
 void reinicia_jogo(Nave* nave, int* pontos, int* timer_spawn, int* intervalo_spawn, int* cooldown_tiro) {
     nave->x = LARGURA / 2;
     nave->y = ALTURA / 2;
     nave->vx = nave->vy = nave->angulo = 0;
+    nave->vidas = 3;
+    nave->invencivel = 0;
     *pontos = 0;
     *timer_spawn = 0;
     *intervalo_spawn = 30 + rand() % 180;
@@ -417,6 +436,8 @@ int main() {
     nave.vx = 0;
     nave.vy = 0;
     nave.angulo = 0;
+    nave.vidas = 3;
+    nave.invencivel = 0;
     
 
     inicia_asteroides(asteroides);
@@ -521,17 +542,23 @@ int main() {
             
             if (verifica_colisao_nave(&nave, asteroides))
             {
-                estado = ESTADO_GAME_OVER;
+                if (nave.vidas <= 0)
+                {
+                    estado = ESTADO_GAME_OVER;
+                }
+                
             }
             
             SDL_SetRenderDrawColor(renderer, 10,10,30,255);
             SDL_RenderClear(renderer);
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
-            desenha_nave(renderer, &nave);
+            if (nave.invencivel == 0 || nave.invencivel % 8 < 4) desenha_nave(renderer, &nave);
             desenha_asteroides(renderer, asteroides);
-            desenha_pontos(renderer, fonte, pontos);
+            desenha_pontos_vidas(renderer, fonte, pontos, nave.vidas);
             desenha_tiro(renderer, tiros, &nave);
             desenha_particulas(renderer, particulas);
+
+            if (nave.invencivel > 0) nave.invencivel--;
         }
         
         if (estado == ESTADO_GAME_OVER)
