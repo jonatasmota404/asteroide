@@ -1,0 +1,11 @@
+# binários
+asteroids
+asteroids.exe
+
+# arquivos de áudio (pesados)
+*.mp3
+*.ogg
+*.wav
+
+# arquivos objeto
+*.o
