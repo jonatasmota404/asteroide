@@ -1,6 +1,7 @@
 [Desktop Entry]
 Name=Asteroids
-Exec=/caminho/completo/asteroids
-Icon=/caminho/completo/assets/logo.png
+Exec=/CAMINHO/PARA/asteroids
+Icon=/CAMINHO/PARA/assets/logo.png
 Type=Application
 Categories=Game;
+Comment=Edite os caminhos acima antes de instalar

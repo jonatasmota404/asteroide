@@ -1,9 +1,8 @@
+asteroids
+asteroids.exe
 *.AppImage
 *.zip
 *.tar.gz
 AppDir/
 windows-build/
 asteroids-windows/
-asteroids
-asteroids.exe
-linuxdeploy-x86_64.AppImage
