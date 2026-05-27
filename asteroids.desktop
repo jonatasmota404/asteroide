@@ -1,0 +1,6 @@
+[Desktop Entry]
+Name=Asteroids
+Exec=/caminho/completo/asteroids
+Icon=/caminho/completo/assets/logo.png
+Type=Application
+Categories=Game;

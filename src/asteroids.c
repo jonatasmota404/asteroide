@@ -634,7 +634,15 @@ int main() {
             nave.x = fmod(nave.x + LARGURA, LARGURA);
             nave.y = fmod(nave.y + ALTURA, ALTURA);
             
-            
+            int tem_asteroide = 0;
+            for (int i = 0; i < MAX_ASTEROIDES; i++) {
+                if (asteroides[i].ativo) { tem_asteroide = 1; break; }
+            }
+            if (!tem_asteroide) {
+                for (int i = 0; i < 4; i++) spawn_asteroid(asteroides);
+                timer_spawn = 0;
+                intervalo_spawn = 30 + rand() % 180;
+            }
             if (timer_spawn >= intervalo_spawn) {
                 spawn_asteroid(asteroides);
                 timer_spawn = 0;
@@ -672,6 +680,7 @@ int main() {
             desenha_particulas(renderer, particulas);
 
             if (nave.invencivel > 0) nave.invencivel--;
+            timer_spawn++;
         }
         
         if (estado == ESTADO_PAUSADO) {
@@ -757,7 +766,6 @@ int main() {
         
         SDL_RenderPresent(renderer);
         SDL_Delay(16); // 1000ms / 60fps ≈ 16ms por frame
-        timer_spawn++;
      }
      
     Mix_FreeChunk(som_tiro);

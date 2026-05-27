@@ -11,15 +11,6 @@ linux:
 windows:
 	$(CC_WINDOWS) src/asteroids.c -o asteroids.exe $(SDL_WIN_INCLUDE) $(SDL_WIN_LIB) $(FLAGS) -mwindows
 
-appimage: linux
-	cp asteroids AppDir/usr/bin/
-	./linuxdeploy-x86_64.AppImage \
-		--appdir AppDir \
-		--executable AppDir/usr/bin/asteroids \
-		--desktop-file AppDir/usr/share/applications/asteroids.desktop \
-		--icon-file AppDir/usr/share/icons/hicolor/256x256/apps/asteroids.png \
-		--output appimage
-
 all: linux windows
 
 clean:
