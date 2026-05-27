@@ -14,6 +14,7 @@
 #define ESTADO_MENU 0
 #define ESTADO_JOGANDO 1
 #define ESTADO_GAME_OVER 2
+#define MAX_ESTRELAS 150
 #define FONTE "/usr/share/fonts/truetype/lato/Lato-Heavy.ttf"
 
 
@@ -52,6 +53,14 @@ typedef struct {
     int ativo;
 } Particula;
 
+typedef struct {
+    float x, y;
+    float velocidade;
+    int brilho; // 100-255, estrelas distantes são mais fracas
+} Estrela;
+
+
+Estrela estrelas[MAX_ESTRELAS];
 Particula particulas[MAX_PARTICULAS];
 Asteroide asteroides[MAX_ASTEROIDES];
 Tiro tiros[MAX_TIROS];
@@ -450,6 +459,39 @@ void verifica_colisao_asteroides(Asteroide* asteroides) {
     }
 }
 
+void inicia_estrelas(Estrela* estrelas){
+    for (int i = 0; i < MAX_ESTRELAS; i++)
+    {
+        estrelas[i].x = ((float)rand() / RAND_MAX) * LARGURA;
+        estrelas[i].y = ((float)rand() / RAND_MAX) * ALTURA;
+        estrelas[i].velocidade = 0.1f + ((float)rand() / RAND_MAX) * 0.4f;
+        estrelas[i].brilho = 100 + ((float)rand() / RAND_MAX) * 155;
+        
+    }
+    
+}
+
+void desenha_estrelas(SDL_Renderer* renderer, Estrela* estrelas) {
+    for (int i = 0; i < MAX_ESTRELAS; i++) {
+        // move
+        estrelas[i].y += estrelas[i].velocidade;
+        estrelas[i].x += estrelas[i].velocidade * 0.3f;
+
+        // wrap
+        if (estrelas[i].y > ALTURA) estrelas[i].y = 0;
+        if (estrelas[i].x > LARGURA) estrelas[i].x = 0;
+
+        // desenha com brilho variável
+        SDL_SetRenderDrawColor(renderer, 
+            estrelas[i].brilho, 
+            estrelas[i].brilho, 
+            estrelas[i].brilho, 
+            255);
+        SDL_RenderDrawPoint(renderer, estrelas[i].x, estrelas[i].y);
+    }
+    SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
+}
+
 int main() {
     
     TTF_Init();
@@ -480,7 +522,7 @@ int main() {
     nave.vidas = 3;
     nave.invencivel = 0;
     
-
+    inicia_estrelas(estrelas);
     inicia_asteroides(asteroides);
     inicia_tiros(tiros);
     
@@ -593,6 +635,7 @@ int main() {
             
             SDL_SetRenderDrawColor(renderer, 10,10,30,255);
             SDL_RenderClear(renderer);
+            desenha_estrelas(renderer, estrelas);
             SDL_SetRenderDrawColor(renderer, 255, 255, 255, 255);
             if (nave.invencivel == 0 || nave.invencivel % 8 < 4) desenha_nave(renderer, &nave);
             desenha_asteroides(renderer, asteroides);
